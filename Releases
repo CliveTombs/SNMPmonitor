@@ -1,0 +1,7 @@
+Versions:
+v00 Working version for one oid from one source.
+v0.1 - added multi source ability and mulity OID.
+v0.2 - releady for use
+v0.3 - added progress numbers to output screen
+v0.4 - added skipping other OIDs for a unit where the first one fails.
+v0.4.1 - fixed where if there was a comma in the returned value it messed up the csv by changing the chatracter to a `
