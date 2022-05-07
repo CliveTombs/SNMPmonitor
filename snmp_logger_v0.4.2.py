@@ -20,11 +20,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 MA 02110-1301, USA.
 
 Versions:
-v00 Working version for one oid from one source.
-v0.1 - added multi source ability and mulity OID.
-v0.2 - releady for use
-v0.3 - added progress numbers to output screen
-v0.4 - added skipping other OIDs for a unit where the first one fails.
+v00      Working version for one oid from one source.
+v0.1   - added multi source ability and mulity OID.
+v0.2 -   releady for use
+v0.3 -   added progress numbers to output screen
+v0.4 -   added skipping other OIDs for a unit where the first one fails.
 v0.4.1 - fixed where if there was a comma in the returned value it messed up the csv by changing the chatracter to a `
 v0.4.2 - enhancement to zip file selection.
 """
@@ -77,7 +77,7 @@ def splash():
           The number of colomns may vary but must contain pairs consisting of OID
           Text and then the OID. The number of Text/OID pairs is described in a
           separate colomn.The origin of each OID has two descriptors. These could be, for
-          example "Office" and "Printer" The sequence is described below:-
+          exID2le "Office" and "Printer" The sequence is described below:-
           ID1,ID2,IP,READCOMMUNITY,SNMPVer,No. of OIDS,OIDTEXT1,OID1,OIDTEXT2,OID2,etc...
           Cntl + c to stop
           ----------------------------------------------------------------------------
@@ -124,20 +124,20 @@ def createdir():
         time.sleep(1)
 
 
-def createlog(BUtime, SITE, AMP, num, NUMOID, OIDTEXT):
+def createlog(BUtime, ID1, ID2, num, NUMOID, OIDTEXT):
     '''
     Creates a log csv for each line in the csv file.
-    Names the file by site amp and time to make it unique.
+    Names the file by ID1 ID2 and time to make it unique.
     In the first line of the file write the unit position and title each colomn
 
     Parameters
     ----------
     BUtime : TYPE string
         DESCRIPTION. The toime in a defined string format
-    SITE : TYPE string
+    ID1 : TYPE string
         DESCRIPTION. Location of the unit
-    AMP : TYPE string
-        DESCRIPTION. The name of the unit on site
+    ID2 : TYPE string
+        DESCRIPTION. The name of the unit on ID1
     num : TYPE int
         DESCRIPTION. The time in seconds between scans
     NUMOID : TYPE int
@@ -150,9 +150,9 @@ def createlog(BUtime, SITE, AMP, num, NUMOID, OIDTEXT):
     None.
 
     '''
-    if os.path.isfile(os.path.normpath(Log_Location+"Monitor_Log-" + SITE + "-" + AMP + "-" + BUtime + ".csv")) is False:  # if the file does not already exist
-        with open(os.path.normpath(Log_Location+"Monitor_Log-" + SITE + "-" + AMP + "-" + BUtime + ".csv"), mode='w', encoding='utf8', newline='\r\n') as f:  # create the file
-            f.write("Moxa Monitor log by " + getpass.getuser() + " at " + SITE + " - " + AMP)
+    if os.path.isfile(os.path.normpath(Log_Location+"Monitor_Log-" + ID1 + "-" + ID2 + "-" + BUtime + ".csv")) is False:  # if the file does not already exist
+        with open(os.path.normpath(Log_Location+"Monitor_Log-" + ID1 + "-" + ID2 + "-" + BUtime + ".csv"), mode='w', encoding='utf8', newline='\r\n') as f:  # create the file
+            f.write("Monitor log by " + getpass.getuser() + " at " + ID1 + " - " + ID2)
 #  now, for each OID write the colomn title
             for r in range(NUMOID):
                 f.write("," + OIDTEXT[r])
@@ -184,18 +184,10 @@ def input_filename(filelist):
     print("------------------------------------------------------------------------------")
     print(filelist)
     print(len(filelist))
-    ziplist = {}
-    for a in range (len(filelist)):
-        ziplist.update({str(a+1): (filelist)[a] + "\n"})
-        print(ziplist)
-    for a in range (1, len(filelist) +1):
-        print(a, "-", ziplist[(str(a))])
-    datafilen = input("\nWhat is the entry number of the zipfile containing \"unitdetails.csv\"? - ")
-    datafile = ziplist[(str(datafilen))]
-    print(datafile)
+    datafile = select_zipfile(filelist)
+    print("\n", datafile)
     password = input("\nPassword Please? - ")
     # now test that the file is there and can be opened.
-
     try:
         with zipfile.ZipFile(datafile) as myzip:
             with myzip.open('unitdetails.csv', mode='r', pwd=bytes(password, 'utf8')) as f:
@@ -208,6 +200,30 @@ def input_filename(filelist):
         datafile, password = input_filename(filelist)
     return datafile, password, num
 
+def select_zipfile(filelist):
+    '''
+    Used to select the wanted file from a list of zipped files.
+    A Dictionary is created with the number in the list as the key.
+    The file name is the value.
+
+    Parameters
+    ----------
+    filelist : TYPE list
+        DESCRIPTION.
+Contains the available zip files
+    Returns
+    -------
+    datafile : TYPE string
+        DESCRIPTION
+        The selected file
+    '''
+    for a in range(len(filelist)):
+        print(str(a + 1), "-", (filelist)[a])
+    datafile_n = int(input("\nWhat is the entry number of the zipfile containing \"unitdetails.csv\"? - "))
+    datafile = filelist[datafile_n-1]
+    return datafile
+
+
 
 def findlistlen(BUtime, datafile, password):
 
@@ -218,15 +234,15 @@ def findlistlen(BUtime, datafile, password):
     return L
 
 
-def writelog(SITE, AMP, OIDTEXT, OIDValue, NUMOID, BUtime):
+def writelog(ID1, ID2, OIDTEXT, OIDValue, NUMOID, BUtime):
     '''
     Routine for adding all the OIDValues to the logfile. Opens the file for appending, adds the time then each OID value as returned from 'read'
 
     Parameters
     ----------
-    SITE : TYPE String
+    ID1 : TYPE String
         DESCRIPTION. Location Name. Required to open the correct file
-    AMP : TYPE
+    ID2 : TYPE
         DESCRIPTION.
     OIDTEXT : TYPE String
         DESCRIPTION. The name of the parameter. Used for the coloumn heading
@@ -242,7 +258,7 @@ def writelog(SITE, AMP, OIDTEXT, OIDValue, NUMOID, BUtime):
     None.
 
     '''
-    with open(os.path.normpath(Log_Location+"Monitor_Log-" + SITE + "-" + AMP + "-" + BUtime + ".csv"), mode='a', encoding='utf8', newline='\r\n') as f:
+    with open(os.path.normpath(Log_Location+"Monitor_Log-" + ID1 + "-" + ID2 + "-" + BUtime + ".csv"), mode='a', encoding='utf8', newline='\r\n') as f:
         f.write(time.strftime("%Y.%m.%d-%H.%M.%S"))
         for r in range(NUMOID):
             f.write("," + OIDValue[r])
@@ -251,7 +267,7 @@ def writelog(SITE, AMP, OIDTEXT, OIDValue, NUMOID, BUtime):
 
 
 def fileline(R, L, BUtime, datafile, password):
-    # opens the list and returns the site service and ip address of each line in turn
+    # opens the list and returns the ID1 service and ip address of each line in turn
     with zipfile.ZipFile(datafile) as myzip:
         with myzip.open('unitdetails.csv', mode='r', pwd=bytes(password, 'utf8')) as f:
             lines = f.readlines()
@@ -262,8 +278,8 @@ def fileline(R, L, BUtime, datafile, password):
             NUMOID = int(re.split(',', (the_line))[5].strip())  # find how many OIDS in the accros the list
             READCOMMUNITY = re.split(',', str(the_line))[3].strip()  # third entry on a line
             SNMPV = re.split(',', str(the_line))[4].strip()
-            SITE = re.split(',', str(the_line))[0].strip()  # where in the country is it
-            AMP = re.split(',', str(the_line))[1].strip()  # and which amplifier there is it
+            ID1 = re.split(',', str(the_line))[0].strip()  # where in the country is it
+            ID2 = re.split(',', str(the_line))[1].strip()  # and which ID2lifier there is it
             IP = re.split(',', str(the_line))[2].strip()  # ip address
 # Set up the lists to receive the OIDS and text from the input sheet
             OIDTEXT = []
@@ -273,18 +289,18 @@ def fileline(R, L, BUtime, datafile, password):
                 OID.append(re.split(',', str(the_line))[7+(2*o)].strip())
             myzip.close()
 
-    return SITE, AMP, READCOMMUNITY, SNMPV, IP, NUMOID, OIDTEXT, OID
+    return ID1, ID2, READCOMMUNITY, SNMPV, IP, NUMOID, OIDTEXT, OID
 
 
-def read(SITE, AMP, READCOMMUNITY, SNMPV, IP, NUMOID, OID):
+def read(ID1, ID2, READCOMMUNITY, SNMPV, IP, NUMOID, OID):
     """
      Has to add a line of data containing a reading from all the OIDS in the OID list and
 
     Parameters
     ----------
-    SITE : TYPE
+    ID1 : TYPE
         DESCRIPTION.From the first coloumn of the csv file ( like NHT)
-    AMP : TYPE
+    ID2 : TYPE
         DESCRIPTION.From the second coloumn of the csv file. (like NVR2A)
     READCOMMUNITY : TYPE
         DESCRIPTION.
@@ -453,20 +469,20 @@ def main(args):
     createdir()
     L = findlistlen(BUtime, datafile, password)  # returns the number of lines in the unitdetails.csv
     for R in range(1, L):  # Create one logfile for each unit to be interogated.
-        SITE, AMP, READCOMMUNITY, SNMPV, IP, NUMOID, OIDTEXT, OID = fileline(R, L, BUtime, datafile, password)
-        createlog(BUtime, SITE, AMP, num, NUMOID, OIDTEXT)  # write the log and create the coloun headers
+        ID1, ID2, READCOMMUNITY, SNMPV, IP, NUMOID, OIDTEXT, OID = fileline(R, L, BUtime, datafile, password)
+        createlog(BUtime, ID1, ID2, num, NUMOID, OIDTEXT)  # write the log and create the coloun headers
 
     while True:
         UI()
         print("")
         start = time.time()  # the time at the start of the cycle
-# R is the individual ip address. So each time around the loop all moxas will be polled for all oids.
+# R is the individual ip address. So each time around the loop all units will be polled for all oids.
         for R in range(1, L):  # goes down the list a line at a time, starting from line 2
             print("\033[A", end="", flush=True)
-            SITE, AMP, READCOMMUNITY, SNMPV, IP, NUMOID, OIDTEXT, OID = fileline(R, L, BUtime, datafile, password)
-            print(SITE, AMP)  # as a progress check on screen
-            OIDValue = read(SITE, AMP, READCOMMUNITY, SNMPV, IP, NUMOID, OID)
-            writelog(SITE, AMP, OIDTEXT, OIDValue, NUMOID, BUtime)
+            ID1, ID2, READCOMMUNITY, SNMPV, IP, NUMOID, OIDTEXT, OID = fileline(R, L, BUtime, datafile, password)
+            print(ID1, ID2)  # as a progress check on screen
+            OIDValue = read(ID1, ID2, READCOMMUNITY, SNMPV, IP, NUMOID, OID)
+            writelog(ID1, ID2, OIDTEXT, OIDValue, NUMOID, BUtime)
             print("               ")
         while start > time.time() - float(num):  # calculates when the time is up
             n = int(start - (time.time()-float(num)))
