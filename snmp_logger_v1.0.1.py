@@ -62,14 +62,25 @@ class MyApp(QMainWindow, Ui_MainWindow):
         self.tabWidget.setCurrentIndex(0)
         self.caption = ("Read Multiple OIDS from Multiple SNMP devices  User-" + getpass.getuser() + "   " + str(version))
         self.label_version.setText("version " + version)
+        self.label_user.setText("User- " + getpass.getuser())
         self.Buttongetfile.clicked.connect(self.getzipfile)
         self.Buttonmakecsv.clicked.connect(self.makecsv)
         self.ButtonBoxSetup.accepted.connect(self.gotoaccepted)
+
 
     def gotoaccepted(self):
         self.tabWidget.setCurrentIndex(1)
 
     def makecsv(self):
+        '''
+        Creates a text file (csv format) for the storage of the OIDS text and OID. The file is empty of all but one line of
+        test data for use as an example.
+
+        Returns
+        -------
+        None.
+
+        '''
         if os.path.isfile("unitdetails.csv"):
             msg = QMessageBox()
             msg.setWindowTitle("File Exists Warning")
@@ -84,6 +95,16 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 QMessageBox.about(self, "File Written", "A new \"unitdetails.csv\" file was written")
             else:
                 QMessageBox.about(self, "CSV file ", "No new file was written")
+
+    def readUnitList(self):
+        self.zip_file = (self.dir_path[0])  # path to the zip file
+        try:
+            with zipfile.ZipFile(self.zip_file) as z:
+                z.extractall("temp")  # the files are extracted to the working directory/temp
+                self.label_selection.setText("File selected- " + self.zip_file)
+
+        except:
+            print("Invalid file")
 
     def getzipfile(self):
         '''
