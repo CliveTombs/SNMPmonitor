@@ -62,6 +62,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
         QMainWindow.__init__(self)
         Ui_MainWindow.__init__(self)
         self.setupUi(self)
+        self.running = True
         self.tabWidget.setCurrentIndex(0)
         self.textEdit_results.setText("Log")
         self.caption = ("Read Multiple OIDS from Multiple SNMP devices  User-" + getpass.getuser() + "   " + str(version))
@@ -72,6 +73,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
         self.ButtonBoxSetup.accepted.connect(self.gotoaccepted)
         self.Button_zip.clicked.connect(self.makezipfile)
         self.Button_Run.clicked.connect(self.gotorun)
+        self.Button_Stop.clicked.connect(self.stop)
 
 
     def makezipfile(self):
@@ -79,11 +81,27 @@ class MyApp(QMainWindow, Ui_MainWindow):
         infile = "unitdetails.csv"
         zipPass = self.line_ZipPassword.displayText()
 
-        subprocess.call(["zip","-P", zipPass, outfile, infile])
+        subprocess.call(["zip", "-P", zipPass, outfile, infile])
 
     def gotorun(self):
-        print(self.contentlist)
-        print()
+
+        self.running = True
+        self.textEdit_results.setText("Run in Progress")
+        while self.running is True:
+            self.start = time.time()
+            for self.n in range(1, self.L):  # the number of entries in unitdetails.csv
+                self.readstructure()
+                self.read()
+                self.writelog()
+                while self.start > time.time() - float(self.delaysecs):  # calculates when the time is up
+                    self.d = int(self.start - (time.time()-float(self.delaysecs)))
+                    self.lcdNumbercountdown.display(self.d)
+                    if self.running is False:
+                        return
+                    self.delay(1)
+
+    def stop(self):
+        self.running = False
 
 
     def gotoaccepted(self):
@@ -98,15 +116,19 @@ class MyApp(QMainWindow, Ui_MainWindow):
         self.BUtime = time.strftime("%Y.%m.%d-%H.%M.%S")  # time in a string format as described, the log files will use this in the filename
         self.createdir()
         self.tabWidget.setCurrentIndex(1)  # get the reun tab displayed.
-        self.readUnitList()
+        self.readUnitList() #  Also find the number of different units i.e.(self.L)
         self.timedelay()  # read the length of time between readings. (self.delaysecs)
-        self.readstructure()
-        if self.success is True:
-            self.textEdit_results.append("Click RUN when you want to start")
-        else:
-            self.textEdit_results.append("The following error occured:\n" + str(self.report))
-            return
-        self.createlog()
+        for self.n in range(1, self.L):
+            self.readstructure()
+            if self.success is True:
+                self.createlog()
+            else:
+                self.textEdit_results.append("The following error occured:\n" + str(self.report))
+                return
+        self.textEdit_results.append("Click RUN when you want to start")
+
+
+
 
 
 
@@ -151,11 +173,8 @@ class MyApp(QMainWindow, Ui_MainWindow):
             with ZipFile(self.zip_file) as z:
                 self.content = z.read("unitdetails.csv", pwd=self.line_pw.text().encode()).decode()
                 z.close()
-#            z = ZipFile(self.zip_file)
-#            self.content = z.read("unitdetails.csv", pwd=self.line_pw.text().encode()).decode()
-#            z.close()
-            print(self.content)
             self.contentlist = self.content.split('\n')
+            self.L = len(self.contentlist) #  number of lines in the csv file
 
         except Exception as e:
             #  Go back to front page to display error box
@@ -180,44 +199,35 @@ class MyApp(QMainWindow, Ui_MainWindow):
         self.label_selection.setText("File selected- " + self.zip_file)
 
 
-    def readstructure(self):
+    def readstructure(self): #  was fileline
 #  break the list (line) apart and strip white-space
 #            self.contentlist is a list of the units to interogate
+        self.success = False
         try:
-            self.L = len(self.contentlist) #  number of lines in the csv file
-            for n in range (1, self.L):
-                self.line = self.contentlist[n]
-                self.NUMOID = int(re.split(',', (self.line))[5].strip())  # find how many OIDS in the line accross the list
-                self.READCOMMUNITY = re.split(',', str(self.line))[3].strip()  # third entry on a line
-                self.SNMPV = re.split(',', str(self.line))[4].strip()
-                self.ID1 = re.split(',', str(self.line))[0].strip()  # where in the country is it
-                self.ID2 = re.split(',', str(self.line))[1].strip()  # and which ID2lifier there is it
-                self.IP = re.split(',', str(self.line))[2].strip()  # ip address
-    # Set up the lists to receive the OIDS and text from the input sheet. because there are a variable number of them on each line they have to be done in a separate loop
-                self.OIDTEXT = []
-                self.OID = []
-                for o in range(self.NUMOID):  # see above - the number of oids on the line
-                    self.OIDTEXT.append(re.split(',', str(self.line))[(6+(2*o))].strip())
-                    self.OID.append(re.split(',', str(self.line))[7+(2*o)].strip())
-                self.success is True
+
+            self.line = self.contentlist[self.n]
+            self.NUMOID = int(re.split(',', (self.line))[5].strip())  # find how many OIDS in the line accross the list
+            self.READCOMMUNITY = re.split(',', str(self.line))[3].strip()  # third entry on a line
+            self.SNMPV = re.split(',', str(self.line))[4].strip()
+            self.ID1 = re.split(',', str(self.line))[0].strip()  # where in the country is it
+            self.ID2 = re.split(',', str(self.line))[1].strip()  # and which ID2lifier there is it
+            self.IP = re.split(',', str(self.line))[2].strip()  # ip address
+# Set up the lists to receive the OIDS and text from the input sheet. because there are a variable number of them on each line they have to be done in a separate loop
+            self.OIDTEXT = []
+            self.OID = []
+            for o in range(self.NUMOID):  # see above - the number of oids on the line
+                self.OIDTEXT.append(re.split(',', str(self.line))[(6+(2*o))].strip())
+                self.OID.append(re.split(',', str(self.line))[7+(2*o)].strip())
+
+            self.success = True
         except Exception as e:
-            self.success is False
+            self.success = False
             self.report = e
 
     def delay(self, amount):
         loop = QEventLoop()
         QTimer.singleShot(int(amount*1000), loop.quit)
         loop.exec_()
-
-    def UI(self):
-        if os.name == "posix":  # Detect Linux OS
-            os.system("clear")
-        else:
-            os.system("cls")  # For other systems
-        print("------------------------------------------------------------------------------")
-        print("Read Multiple OIDS from Multiple SNMP devices  User-" + getpass.getuser() + "   " + str(version))
-        print("------------------------------------------------------------------------------")
-
 
     def yes_no(self, answer):
         yes = set(['yes', 'y', 'ye', ''])
@@ -284,7 +294,6 @@ class MyApp(QMainWindow, Ui_MainWindow):
         None.
 
         '''
-        print(self.ID1)
         if os.path.isfile(os.path.normpath(Log_Location+"Monitor_Log-" + self.ID1 + "-" + self.ID2 + "-" + self.BUtime + ".csv")) is False:  # if the file does not already exist
             with open(os.path.normpath(Log_Location+"Monitor_Log-" + self.ID1 + "-" + self.ID2 + "-" + self.BUtime + ".csv"), mode='w', encoding='utf8', newline='\r\n') as f:  # create the file
                 f.write("Monitor log by " + getpass.getuser() + " at " + self.ID1 + " - " + self.ID2)
@@ -293,49 +302,9 @@ class MyApp(QMainWindow, Ui_MainWindow):
                     f.write("," + self.OIDTEXT[r])
                 f.write("\n")
                 f.close()
-            self.textEdit_results.append("Log CSV files initiated.")
+            self.textEdit_results.append("Log CSV files for" + self.ID1 + " - " + self.ID2 +" initiated.")
         else:
             self.textEdit_results.append("Log CSV files were already there!")
-
-
-    def input_filename(filelist):
-        '''
-        Get the name and password for the input csv file. Gets the interval between cycles.
-
-        Returns
-        -------
-        datafile : TYPE string
-            DESCRIPTION. zip file name
-        password : TYPE string
-            DESCRIPTION. zip file password
-        num : TYPE string
-            DESCRIPTION. number and optional letter representing secs mins or hours
-        '''
-        if os.name == "posix":  # Detect Linux OS
-            os.system("clear")  # Clears the screen on Linux systems
-        else:
-            os.system("cls")  # For other systems
-        print("------------------------------------------------------------------------------")
-        print("Read Multiple OIDS from Multiple SNMP devices  User-" + getpass.getuser() + "   " + str(version))
-        print("------------------------------------------------------------------------------")
-        print(filelist)
-        print(len(filelist))
-        datafile = select_zipfile(filelist)
-        print("\n", datafile)
-        password = input("\nPassword Please? - ")
-        # now test that the file is there and can be opened.
-        try:
-            with zipfile.ZipFile(datafile) as myzip:
-                with myzip.open('unitdetails.csv', mode='r', pwd=bytes(password, 'utf8')) as f:
-                    pass
-                f.close()
-            num = delay()
-        except:
-            print("Incorrect details - file not accessible")
-            input("Press \"Enter\" to continue")
-            datafile, password = input_filename(filelist)
-        return datafile, password, num
-
 
     def writelog(self):
         '''
@@ -367,7 +336,6 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 f.write("," + self.OIDValue[r])
             f.write("\n")
             f.close()
-
 
 
     def read(self):
@@ -404,7 +372,10 @@ class MyApp(QMainWindow, Ui_MainWindow):
         self.SNMPV = int(self.SNMPV)
         self.OIDValue = []  # initiate the list
         for r in range(self.NUMOID):
-            print("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", "OID", r+1, "of", self.NUMOID, end=" ", flush=True)  # lots of backspaces
+#            self.textEdit_results.documentTitle("TestTitle")
+            self.textEdit_results.textCursor().setPosition(10, QTextCursor.MoveAnchor)
+            print(self.textEdit_results.textCursor().position())
+            self.textEdit_results.append("OID" + str(r+1) + "of" + str(self.NUMOID))  # lots of backspaces
             try:
                 session = SNMP(self.IP, community=self.READCOMMUNITY, version=self.SNMPV, timeout=2, retries=3)
                 v = self.OID[r]
@@ -457,47 +428,11 @@ class MyApp(QMainWindow, Ui_MainWindow):
 
         '''
         if self.radio_Hour.isChecked() is True:
-            self.delaysecs = (self.lineEdit_Rtime.text()) * 3600
+            self.delaysecs = (float(self.lineEdit_Rtime.text())) * 3600
         elif self.radio_Min.isChecked() is True:
-            self.delaysecs = (self.lineEdit_Rtime.text()) * 60
+            self.delaysecs = (float(self.lineEdit_Rtime.text())) * 60
         else:
             self.delaysecs = (self.lineEdit_Rtime.text())
-
-
-    def delayold(self):
-        """
-        Interpret the entered time between monitoring cycles. Convert the entered s, m or h into seconds
-
-        Returns
-        -------
-        num : TYPE int
-            DESCRIPTION. Number of seconds between interogative scans
-
-        """
-        while True:
-            secs = input("Enter the time interval between polls. Suffix with s, m or h for seconds minutes or hours: ")
-            try:
-                if(secs[-1]) == "h" or (secs[-1]) == "m" or (secs[-1]) == "s":  # finds the last character of the string
-                    if (secs[-1]) == "h":
-                        num = int(secs[:-1]) * 3600
-
-                    elif (secs[-1] == "m"):
-                        num = int(secs[:-1]) * 60
-
-                    elif (secs[-1] == "s"):
-                        num = int(secs[:-1])
-                    print(num, "seconds")
-                    return num
-                else:  # if the last char is not a h m or s then if it is just a number
-                    num = int(secs)
-                    print(num, "seconds")
-                    return num
-            except ValueError:  # if last char is anything else
-                print("There is something wrong with that value")
-
-
-    def countdown(n):
-        print("\b\b\b\b\b\b\b\b\b\b", str(n), end=" ", flush=True)
 
 
 def main(args):

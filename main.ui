@@ -405,7 +405,7 @@ QGroupBox::title {
                   </widget>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="pushButton">
+                  <widget class="QPushButton" name="Button_Stop">
                    <property name="maximumSize">
                     <size>
                      <width>50</width>
