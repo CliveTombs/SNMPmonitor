@@ -71,7 +71,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
         self.Buttonmakecsv.clicked.connect(self.makecsv)
         self.ButtonBoxSetup.accepted.connect(self.gotoaccepted)
         self.Button_zip.clicked.connect(self.makezipfile)
-        self.Button_Run.clicked.connect(self.readUnitList)
+        self.Button_Run.clicked.connect(self.gotorun)
 
 
     def makezipfile(self):
@@ -82,7 +82,8 @@ class MyApp(QMainWindow, Ui_MainWindow):
         subprocess.call(["zip","-P", zipPass, outfile, infile])
 
     def gotorun(self):
-        pass
+        print(self.contentlist)
+        print()
 
 
     def gotoaccepted(self):
@@ -100,6 +101,11 @@ class MyApp(QMainWindow, Ui_MainWindow):
         self.readUnitList()
         self.timedelay()  # read the length of time between readings. (self.delaysecs)
         self.readstructure()
+        if self.success is True:
+            self.textEdit_results.append("Click RUN when you want to start")
+        else:
+            self.textEdit_results.append("The following error occured:\n" + str(self.report))
+            return
         self.createlog()
 
 
@@ -148,6 +154,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
 #            z = ZipFile(self.zip_file)
 #            self.content = z.read("unitdetails.csv", pwd=self.line_pw.text().encode()).decode()
 #            z.close()
+            print(self.content)
             self.contentlist = self.content.split('\n')
 
         except Exception as e:
@@ -177,9 +184,8 @@ class MyApp(QMainWindow, Ui_MainWindow):
 #  break the list (line) apart and strip white-space
 #            self.contentlist is a list of the units to interogate
         try:
-            L = len(self.contentlist) #  number of lines in the csv file
-            print(L)
-            for n in range (1, L):
+            self.L = len(self.contentlist) #  number of lines in the csv file
+            for n in range (1, self.L):
                 self.line = self.contentlist[n]
                 self.NUMOID = int(re.split(',', (self.line))[5].strip())  # find how many OIDS in the line accross the list
                 self.READCOMMUNITY = re.split(',', str(self.line))[3].strip()  # third entry on a line
@@ -193,9 +199,10 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 for o in range(self.NUMOID):  # see above - the number of oids on the line
                     self.OIDTEXT.append(re.split(',', str(self.line))[(6+(2*o))].strip())
                     self.OID.append(re.split(',', str(self.line))[7+(2*o)].strip())
-                self.textEdit_results.append("Click RUN when you want to start")
+                self.success is True
         except Exception as e:
-            self.textEdit_results.append("The following error occured:\n" + str(e))
+            self.success is False
+            self.report = e
 
     def delay(self, amount):
         loop = QEventLoop()
@@ -277,6 +284,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
         None.
 
         '''
+        print(self.ID1)
         if os.path.isfile(os.path.normpath(Log_Location+"Monitor_Log-" + self.ID1 + "-" + self.ID2 + "-" + self.BUtime + ".csv")) is False:  # if the file does not already exist
             with open(os.path.normpath(Log_Location+"Monitor_Log-" + self.ID1 + "-" + self.ID2 + "-" + self.BUtime + ".csv"), mode='w', encoding='utf8', newline='\r\n') as f:  # create the file
                 f.write("Monitor log by " + getpass.getuser() + " at " + self.ID1 + " - " + self.ID2)
@@ -401,19 +409,18 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 session = SNMP(self.IP, community=self.READCOMMUNITY, version=self.SNMPV, timeout=2, retries=3)
                 v = self.OID[r]
                 self.OIDV = (str(session.get(v)))
-                self.checkedtext = changecommas(self.OIDV)  # any commas are converted here
-                self.OIDValue.append(checkedtext)
+                self.changecommas()  # any commas are converted here
+                self.OIDValue.append(self.checkedtext)
             except Exception as e:
                 if r == 0:  # this section stops it trying to get any oids after the first one if it fails to get an answer. Saves a lot of time.
                     for r in range(self.NUMOID):
                         self.OIDValue.append("----")
                     print("\033[A", "Failed.  " + str(e) + "\n", end=" ", flush=True)
-                    time.sleep(1)
-                    return OIDValue
+                    self.textEdit_results.append("Failed.  " + str(e))
                 else:
-                    OIDValue.append("----")
+                    self.OIDValue.append("----")
         print("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", end=" ", flush=True)
-#        return OIDValue
+
 
     def changecommas(self):
         '''
