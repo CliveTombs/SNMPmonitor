@@ -64,7 +64,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.running = True
         self.tabWidget.setCurrentIndex(0)
-        self.textEdit_results.setText("Log")
+        self.textEdit_results.setPlainText("Log")
         self.caption = ("Read Multiple OIDS from Multiple SNMP devices  User-" + getpass.getuser() + "   " + str(version))
         self.label_version.setText("version " + version)
         self.label_user.setText("User- " + getpass.getuser())
@@ -86,19 +86,21 @@ class MyApp(QMainWindow, Ui_MainWindow):
     def gotorun(self):
 
         self.running = True
-        self.textEdit_results.setText("Run in Progress")
+        self.textEdit_results.setPlainText("Run in Progress")
         while self.running is True:
             self.start = time.time()
             for self.n in range(1, self.L):  # the number of entries in unitdetails.csv
                 self.readstructure()
+                self.textEdit_results.undo()  # deletes the last line in the log window. This removes the n OID of m linewhen moving to the next unit.
                 self.read()
                 self.writelog()
-                while self.start > time.time() - float(self.delaysecs):  # calculates when the time is up
-                    self.d = int(self.start - (time.time()-float(self.delaysecs)))
-                    self.lcdNumbercountdown.display(self.d)
-                    if self.running is False:
-                        return
-                    self.delay(1)
+            while self.start > time.time() - float(self.delaysecs):  # calculates when the time is up
+                self.d = int(self.start - (time.time()-float(self.delaysecs)))
+                self.lcdNumbercountdown.display(self.d)
+                if self.running is False:
+                    self.textEdit_results.appendPlainText("Run Stopped")
+                    return
+                self.delay(1)
 
     def stop(self):
         self.running = False
@@ -123,9 +125,9 @@ class MyApp(QMainWindow, Ui_MainWindow):
             if self.success is True:
                 self.createlog()
             else:
-                self.textEdit_results.append("The following error occured:\n" + str(self.report))
+                self.textEdit_results.appendPlainText("The following error occured:\n" + str(self.report))
                 return
-        self.textEdit_results.append("Click RUN when you want to start")
+        self.textEdit_results.appendPlainText("Click RUN when you want to start")
 
 
 
@@ -260,10 +262,10 @@ class MyApp(QMainWindow, Ui_MainWindow):
             os.makedirs(os.path.normpath(Log_Location))
         except OSError as exception:
             if exception.errno != errno.EEXIST:  # if the folder already exists do not make it.
-                self.textEdit_results.append("Folder is present")
+                self.textEdit_results.appendPlainText("Folder is present")
                 raise
             else:  # if it does not exist make it
-                self.textEdit_results.append("Making Directory")
+                self.textEdit_results.appendPlainText("Making Directory")
         finally:
             self.delay(0.1)
 
@@ -302,9 +304,9 @@ class MyApp(QMainWindow, Ui_MainWindow):
                     f.write("," + self.OIDTEXT[r])
                 f.write("\n")
                 f.close()
-            self.textEdit_results.append("Log CSV files for" + self.ID1 + " - " + self.ID2 +" initiated.")
+            self.textEdit_results.appendPlainText("Log CSV files for " + self.ID1 + " - " + self.ID2 + " initiated.")
         else:
-            self.textEdit_results.append("Log CSV files were already there!")
+            self.textEdit_results.appendPlainText("Log CSV files were already there!")
 
     def writelog(self):
         '''
@@ -371,11 +373,10 @@ class MyApp(QMainWindow, Ui_MainWindow):
         """
         self.SNMPV = int(self.SNMPV)
         self.OIDValue = []  # initiate the list
+        self.textEdit_results.appendPlainText("Connecting to " + self.ID1)
         for r in range(self.NUMOID):
 #            self.textEdit_results.documentTitle("TestTitle")
-            self.textEdit_results.textCursor().setPosition(10, QTextCursor.MoveAnchor)
-            print(self.textEdit_results.textCursor().position())
-            self.textEdit_results.append("OID" + str(r+1) + "of" + str(self.NUMOID))  # lots of backspaces
+            self.textEdit_results.appendPlainText("OID" + str(r+1) + "of" + str(self.NUMOID))
             try:
                 session = SNMP(self.IP, community=self.READCOMMUNITY, version=self.SNMPV, timeout=2, retries=3)
                 v = self.OID[r]
@@ -386,11 +387,9 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 if r == 0:  # this section stops it trying to get any oids after the first one if it fails to get an answer. Saves a lot of time.
                     for r in range(self.NUMOID):
                         self.OIDValue.append("----")
-                    print("\033[A", "Failed.  " + str(e) + "\n", end=" ", flush=True)
-                    self.textEdit_results.append("Failed.  " + str(e))
+                    self.textEdit_results.appendPlainText("Failed.  " + str(e))
                 else:
                     self.OIDValue.append("----")
-        print("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", end=" ", flush=True)
 
 
     def changecommas(self):
@@ -411,9 +410,9 @@ class MyApp(QMainWindow, Ui_MainWindow):
 
         '''
         self.OIDV = str(self.OIDV)
-        self.OIDV = list (self.OIDV)
+        self.OIDV = list(self.OIDV)
         for r in range(len(self.OIDV)):
-            if self.OIDV[r]== ',':
+            if self.OIDV[r] == ',':
                 self.OIDV[r] = '`'
         self.checkedtext = ''.join(self.OIDV)
         return self.checkedtext

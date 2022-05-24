@@ -97,7 +97,7 @@ QGroupBox::title {
 }</string>
          </property>
          <property name="currentIndex">
-          <number>0</number>
+          <number>1</number>
          </property>
          <widget class="QWidget" name="tab_setup">
           <attribute name="title">
@@ -431,7 +431,7 @@ QGroupBox::title {
                </widget>
               </item>
               <item>
-               <widget class="QTextEdit" name="textEdit_results"/>
+               <widget class="QPlainTextEdit" name="textEdit_results"/>
               </item>
              </layout>
             </widget>
