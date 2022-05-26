@@ -40,19 +40,16 @@ from zipfile import ZipFile
 # import zipfile
 import re
 import errno
-import glob
 from PyQt5 import uic
-from PyQt5.QtCore import QTime, QTimer, QDate, QTimer, QEventLoop
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QDialogButtonBox, QComboBox, QFileDialog, QLCDNumber, QMessageBox
+from PyQt5.QtCore import QTimer, QEventLoop
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
 
 version = "v1.0.1"
 Log_Location = "Monitor_files/"
 
-#from ttmui import Ui_MainWindow  # uncomment when the .ui is converted to a .py
-qtCreatorFile = "main.ui"  # Enter file here. Comment out when ui is converted to a .py
-#from gaugetestui import Ui_MainWindow
-#qtCreatorFile = "gaugetest.ui"  # Enter file here.
-Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
+from mainui import Ui_MainWindow  # uncomment when the .ui is converted to a .py
+#qtCreatorFile = "main.ui"  # Enter file here. Comment out when ui is converted to a .py
+#Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 
 class MyApp(QMainWindow, Ui_MainWindow):
@@ -65,6 +62,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
         self.running = True
         self.tabWidget.setCurrentIndex(0)
         self.textEdit_results.setText("Log")
+        self.helpfile()
         self.caption = ("Read Multiple OIDS from Multiple SNMP devices  User-" + getpass.getuser() + "   " + str(version))
         self.label_version.setText("version " + version)
         self.label_user.setText("User- " + getpass.getuser())
@@ -75,32 +73,74 @@ class MyApp(QMainWindow, Ui_MainWindow):
         self.Button_Run.clicked.connect(self.gotorun)
         self.Button_Stop.clicked.connect(self.stop)
 
+    def helpfile(self):
+        self.textEdit_help.setHtml("""<font color=#202020 size='6'>SNMP Monitor Guide</font>""")
+        self.textEdit_help.append(
+            """<font color=#404040 size='5'>Setup Tab<br></font
+            <font size='4'>This is where the Zip file is selected. From this tab an empty CSV file can be
+            created. It will contain one line as an example.<br>If, however, the folder from which the
+            program is running already contains the CSV file, it will be overwriten if one desires <br>
+            The time between readings can be set in seconds, minutes or hours as selected. Decimal points
+            can be used.<br>
+            The OK button is to move on to the Run dialogue once all the parameters have been set.<br>
+            The Cancel button will close the program like clicking the top right X.<br></font""")
+        self.textEdit_help.append("""
+            <font font color=#404040 size='5'>Run Tab <br></font
+            <font size='4'> The top portion of this screen is the STATUS line. It gives guidance as to the current action.<br>
+            Below this the progress is shown. The name of the zip file and the creation of the log files is confirmed.<br>
+            Once the Run button is clicked the continuing progress though the monitored points is displayed. If any OIDs are
+            unresponsive the program will move on filling the log with --- for that reading. If it is the first OID which fails
+            it is assumed that they all will due to a comms issue and the entire unit is skipped. Between scans of the OIDs
+            an LCD countdown in seconds is displayed.<br>
+            If the STOP button is pressed the program will finish its cycle then stop. The top STATUS line will indicate this.
+            The program can be restatred by clicking the Run button and the log file will be continued albeit with time gaps in
+            the data, of course.<br></font""")
+        self.textEdit_help.append("""
+            <font color=#404040 size='5'>Create Zip Tab <br></font
+            <font size='4'>The unitdetails.csv file in the folder from which the program is run can be zipped and password
+            protected from the tab. Just enter the name of the file to be created along with the password to be used and click
+            "Zip Now". The file extension needs to be entered, i.e. "filename.zip" not just "filename"</font>""")
 
     def makezipfile(self):
-        outfile = self.line_enter_filename.displayText()
-        infile = "unitdetails.csv"
-        zipPass = self.line_ZipPassword.displayText()
+        try:
+            outfile = self.line_enter_filename.displayText()
+            infile = "unitdetails.csv"
+            zipPass = self.line_ZipPassword.displayText()
+            subprocess.call(["zip", "-P", zipPass, outfile, infile])
+        except Exception as e:
+            #  Go back to front page to display error box
+            self.tabWidget.setCurrentIndex(0)
+            self.label_selection.setText("Error: " + str(e))
+            return
 
-        subprocess.call(["zip", "-P", zipPass, outfile, infile])
 
     def gotorun(self):
 
         self.running = True
-        self.textEdit_results.setText("Run in Progress")
+        self.lineEdit_status.setText("Run in Progress")
         while self.running is True:
             self.start = time.time()
             for self.n in range(1, self.L):  # the number of entries in unitdetails.csv
-                self.readstructure()
+                self.readstructure()  # puts the value for one line of unitdetails.csv into the list variables
                 self.read()
                 self.writelog()
-                while self.start > time.time() - float(self.delaysecs):  # calculates when the time is up
-                    self.d = int(self.start - (time.time()-float(self.delaysecs)))
-                    self.lcdNumbercountdown.display(self.d)
-                    if self.running is False:
-                        return
-                    self.delay(1)
+            while self.start > time.time() - float(self.delaysecs):  # calculates when the time is up
+                self.d = int(self.start - (time.time()-float(self.delaysecs)))
+                self.lcdNumbercountdown.display(self.d)
+                if self.running is False:
+                    self.lineEdit_status.setText("Run Stopped")
+                    return
+                self.delay(0.5)
 
     def stop(self):
+        """
+        Is read by the gotorun def and makes it stop if the stop button has been subsequently pressed.
+
+        Returns
+        -------
+        None.
+
+        """
         self.running = False
 
 
@@ -125,7 +165,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
             else:
                 self.textEdit_results.append("The following error occured:\n" + str(self.report))
                 return
-        self.textEdit_results.append("Click RUN when you want to start")
+        self.lineEdit_status.setText("Click RUN when you want to start")
 
 
 
@@ -174,12 +214,15 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 self.content = z.read("unitdetails.csv", pwd=self.line_pw.text().encode()).decode()
                 z.close()
             self.contentlist = self.content.split('\n')
-            self.L = len(self.contentlist) #  number of lines in the csv file
+            self.L = len(self.contentlist) - 1  # number of lines in the csv file
+            self.textEdit_results.setText("Logging - read " + str(self.L - 1) + " lines from " + self.zip_file)
 
         except Exception as e:
             #  Go back to front page to display error box
             self.tabWidget.setCurrentIndex(0)
             self.label_selection.setText("Error: " + str(e))
+            return
+
 
 
     def getzipfile(self):
@@ -228,20 +271,6 @@ class MyApp(QMainWindow, Ui_MainWindow):
         loop = QEventLoop()
         QTimer.singleShot(int(amount*1000), loop.quit)
         loop.exec_()
-
-    def yes_no(self, answer):
-        yes = set(['yes', 'y', 'ye', ''])
-        no = set(['no', 'n'])
-
-        while True:
-            choice = input(answer).lower()
-            if choice in yes:
-                return True
-            elif choice in no:
-                return False
-            else:
-                print("Please respond with 'yes' or 'no'\n")
-
 
     def createdir(self):
         '''
@@ -371,11 +400,15 @@ class MyApp(QMainWindow, Ui_MainWindow):
         """
         self.SNMPV = int(self.SNMPV)
         self.OIDValue = []  # initiate the list
+        self.textEdit_results.cut()
+        self.textEdit_results.append("Fetching " + self.ID1 + " - " + self.ID2)
         for r in range(self.NUMOID):
-#            self.textEdit_results.documentTitle("TestTitle")
-            self.textEdit_results.textCursor().setPosition(10, QTextCursor.MoveAnchor)
-            print(self.textEdit_results.textCursor().position())
-            self.textEdit_results.append("OID" + str(r+1) + "of" + str(self.NUMOID))  # lots of backspaces
+            if r != 0:
+                self.textEdit_results.undo()
+            else:
+                pass
+
+            self.textEdit_results.append("OID" + str(r+1) + "of" + str(self.NUMOID))
             try:
                 session = SNMP(self.IP, community=self.READCOMMUNITY, version=self.SNMPV, timeout=2, retries=3)
                 v = self.OID[r]
@@ -386,11 +419,11 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 if r == 0:  # this section stops it trying to get any oids after the first one if it fails to get an answer. Saves a lot of time.
                     for r in range(self.NUMOID):
                         self.OIDValue.append("----")
-                    print("\033[A", "Failed.  " + str(e) + "\n", end=" ", flush=True)
+
                     self.textEdit_results.append("Failed.  " + str(e))
+                    return
                 else:
                     self.OIDValue.append("----")
-        print("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", end=" ", flush=True)
 
 
     def changecommas(self):
@@ -407,83 +440,40 @@ class MyApp(QMainWindow, Ui_MainWindow):
         Returns
         -------
         checkedtext : TYPE string
-            DESCRIPTION. The value which came in but with commas convereted to `
+            DESCRIPTION. The value which came in but with commas converted to `
 
         '''
         self.OIDV = str(self.OIDV)
-        self.OIDV = list (self.OIDV)
+        self.OIDV = list(self.OIDV)
         for r in range(len(self.OIDV)):
-            if self.OIDV[r]== ',':
+            if self.OIDV[r] == ',':
                 self.OIDV[r] = '`'
         self.checkedtext = ''.join(self.OIDV)
         return self.checkedtext
 
     def timedelay(self):
         '''
-        Number of seconds between readings.
-
+        Specify the Number of seconds between readings.
+        Allows the value to be presented in secs mins or hours
         Returns
         -------
         None.
 
         '''
-        if self.radio_Hour.isChecked() is True:
-            self.delaysecs = (float(self.lineEdit_Rtime.text())) * 3600
-        elif self.radio_Min.isChecked() is True:
-            self.delaysecs = (float(self.lineEdit_Rtime.text())) * 60
-        else:
-            self.delaysecs = (self.lineEdit_Rtime.text())
+        try:
+            if self.radio_Hour.isChecked() is True:
+                self.delaysecs = int((float(self.lineEdit_Rtime.text())) * 3600)
+            elif self.radio_Min.isChecked() is True:
+                self.delaysecs = int((float(self.lineEdit_Rtime.text())) * 60)
+            else:
+                self.delaysecs = int(self.lineEdit_Rtime.text())
+        except Exception as e:
+            self.delaysecs = 1
+            self.label_selection.setText("Error: " + str(e))
 
 
-def main(args):
-    '''
-
-
-    Parameters
-    ----------
-    args : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    int
-        DESCRIPTION.
-
-    '''
-    BUtime = time.strftime("%Y.%m.%d-%H.%M.%S")  # time in a string format as described
-    filepresence, filelist = checkfilepresence()
-    if filepresence is False:
-        time.sleep(10)
-        return 0
-    datafile, password, num = input_filename(filelist)
-    createdir()
-    L = findlistlen(BUtime, datafile, password)  # returns the number of lines in the unitdetails.csv
-    for R in range(1, L):  # Create one logfile for each unit to be interogated.
-        ID1, ID2, READCOMMUNITY, SNMPV, IP, NUMOID, OIDTEXT, OID = fileline(R, L, BUtime, datafile, password)
-        createlog(BUtime, ID1, ID2, num, NUMOID, OIDTEXT)  # write the log and create the coloun headers
-
-    while True:
-        UI()
-        print("")
-        start = time.time()  # the time at the start of the cycle
-# R is the individual ip address. So each time around the loop all units will be polled for all oids.
-        for R in range(1, L):  # goes down the list a line at a time, starting from line 2
-            print("\033[A", end="", flush=True)
-            ID1, ID2, READCOMMUNITY, SNMPV, IP, NUMOID, OIDTEXT, OID = fileline(R, L, BUtime, datafile, password)
-            print(ID1, ID2)  # as a progress check on screen
-            OIDValue = read(ID1, ID2, READCOMMUNITY, SNMPV, IP, NUMOID, OID)
-            writelog(ID1, ID2, OIDTEXT, OIDValue, NUMOID, BUtime)
-            print("               ")
-        while start > time.time() - float(num):  # calculates when the time is up
-            n = int(start - (time.time()-float(num)))
-            countdown(n)
-            time.sleep(1)
-    return 0
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MyApp()
     window.show()
     sys.exit(app.exec_())
-
-#if __name__ == "__main__":
-#    sys.exit(main(sys.argv))
