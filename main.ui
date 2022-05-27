@@ -958,12 +958,9 @@ QPushButton:pressed {
                 </layout>
                </widget>
               </item>
-<<<<<<< HEAD
-=======
               <item>
                <widget class="QPlainTextEdit" name="textEdit_results"/>
               </item>
->>>>>>> 13303fd0828a52a7be14ab4fbada7d3d403a6caf
              </layout>
             </widget>
            </item>
