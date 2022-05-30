@@ -28,7 +28,9 @@ v0.4 -   added skipping other OIDs for a unit where the first one fails.
 v0.4.1 - fixed where if there was a comma in the returned value it messed up the csv by changing the chatracter to a `
 v0.4.2 - enhancement to zip file selection.
 v1.0.1 - Graphical release using QT5
-v1.0.2 - Windows compatibility. 1. Not zipping files, 2.
+v1.0.2 - Windows compatibility. 1. Not zipping files, 2.Not creating a blank csv file
+         1.zip module changed for py7zr for greater flexability of zip methods and compatability with win and lin.
+         2. routine was missing. could never have worked.
 
 """
 from mainui import Ui_MainWindow  # uncomment when the .ui is converted to a .py
@@ -38,11 +40,12 @@ import time
 from hnmp import SNMP
 import getpass
 import os
-from zipfile import ZipFile
+import py7zr
+# from zipfile import ZipFile
 # import zipfile
 import re
 import errno
-from PyQt5 import uic
+# from PyQt5 import uic
 from PyQt5.QtCore import QTimer, QEventLoop
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
 
@@ -50,13 +53,12 @@ version = "v1.0.2"
 Log_Location = "Monitor_files/"
 
 # qtCreatorFile = "main.ui"  # Enter file here. Comment out when ui is converted to a .py
-#Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
+# Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 
 class MyApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
 
-        #self.filepresence, self.filelist = self.checkfilepresence()
         QMainWindow.__init__(self)
         Ui_MainWindow.__init__(self)
         self.setupUi(self)
@@ -103,6 +105,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
             "Zip Now". The file extension needs to be entered, i.e. "filename.zip" not just "filename"</font>""")
 
     def makezipfile(self):
+        my_filter = [{"id": py7zr.FILTER_CRYPTO_AES256_SHA256}]
         try:
             outfile = self.line_enter_filename.displayText()
             infile = "unitdetails.csv"
@@ -111,7 +114,9 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 subprocess.call(["zip", "-P", zipPass, outfile, infile])
             else:
                 # subprocess.call([, zipPass, outfile, infile])
-                subprocess.call("C:\Program Files\7-Zip\7z.exe" a, "-tzip", "-p", (zipPass), outfile, infile)
+                #  subprocess.call(["7z.exe", "a", "-tzip", "-p" + zipPass, outfile, infile])
+                with py7zr.SevenZipFile(outfile, 'w', filters=my_filter, password=zipPass) as archive:
+                    archive.writeall(infile)
         except Exception as e:
             #  Go back to front page to display error box
             self.tabWidget.setCurrentIndex(0)
@@ -122,6 +127,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
 
         self.running = True
         self.lineEdit_status.setText("Run in Progress")
+        self.delay(0.5)
         while self.running is True:
             self.start = time.time()
             for self.n in range(1, self.L):  # the number of entries in unitdetails.csv
@@ -156,20 +162,24 @@ class MyApp(QMainWindow, Ui_MainWindow):
         None.
 
         '''
-        self.BUtime = time.strftime(
-            "%Y.%m.%d-%H.%M.%S")  # time in a string format as described, the log files will use this in the filename
-        self.createdir()
-        self.tabWidget.setCurrentIndex(1)  # get the reun tab displayed.
-        self.readUnitList()  # Also find the number of different units i.e.(self.L)
-        self.timedelay()  # read the length of time between readings. (self.delaysecs)
-        for self.n in range(1, self.L):
-            self.readstructure()
-            if self.success is True:
-                self.createlog()
-            else:
-                self.textEdit_results.append("The following error occured:\n" + str(self.report))
-                return
-        self.lineEdit_status.setText("Click RUN when you want to start")
+        try:
+            self.BUtime = time.strftime(
+                "%Y.%m.%d-%H.%M.%S")  # time in a string format as described, the log files will use this in the filename
+            self.createdir()
+            self.tabWidget.setCurrentIndex(1)  # get the run tab displayed.
+            self.readUnitList()  # Also find the number of different units i.e.(self.L)
+            self.timedelay()  # read the length of time between readings. (self.delaysecs)
+            for self.n in range(1, self.L):
+                self.readstructure()
+                if self.success is True:
+                    self.createlog()
+                else:
+                    self.textEdit_results.append("The following error occured:\n" + str(self.report))
+                    return
+            self.lineEdit_status.setText("Click RUN when you want to start")
+        except Exception as e:
+            self.tabWidget.setCurrentIndex(0)
+            self.label_selection.setText("Error: " + str(e))
 
     def makecsv(self):
         '''
@@ -196,12 +206,18 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 QMessageBox.about(self, "File Written", "A new \"unitdetails.csv\" file was written")
             else:
                 QMessageBox.about(self, "CSV file ", "No new file was written")
+        else:
+            with open(os.path.normpath("unitdetails.csv"), mode='w', encoding='utf8', newline='\r\n') as f:  # create the file
+                f.write(
+                    "ID1,ID2,IP,READCOMMUNITY,SNMPVer,No. of OIDS,OIDTEXT1 ,OID1,OIDTEXT2,OID2\nOffice,printer,192.168.1.4,public,1,1,Uptime,.1.3.6.1.2.1.1.3.0")
+            QMessageBox.about(self, "File Written", "A new \"unitdetails.csv\" file was written")
 
     def readUnitList(self):
         '''
         Takes the selected file and opens the content of unitdetails.csv from within and puts
         them in a list. The first entry of the list are the column headings.
-        Throws error if password is wrong. Or any other problem.
+        Throws error if password is wrong or any other problem.
+
 
         Returns
         -------
@@ -210,12 +226,20 @@ class MyApp(QMainWindow, Ui_MainWindow):
         '''
 
         try:
-            with ZipFile(self.zip_file) as z:
-                self.content = z.read("unitdetails.csv", pwd=self.line_pw.text().encode()).decode()
-                z.close()
-            self.contentlist = self.content.split('\n')
-            self.L = len(self.contentlist) - 1  # number of lines in the csv file
-            self.textEdit_results.setText("Logging - read " + str(self.L - 1) + " lines from " + self.zip_file)
+            with py7zr.SevenZipFile(self.zip_file, mode='r', password=self.line_pw.text()) as archive:
+                for fname,  bio in archive.read("unitdetails.csv").items():
+                    content = (bio.read().decode())
+                self.contentlist = content.split('\n')
+                self.L = len(self.contentlist)  # number of lines in the csv file
+                self.textEdit_results.setText("Logging - read " + str(self.L - 1) + " lines from " + self.zip_file)
+#            archive.close()
+#        try:
+#            with ZipFile(self.zip_file) as z:
+#                self.content = z.read("unitdetails.csv", pwd=self.line_pw.text().encode()).decode()
+#                z.close()
+#            self.contentlist = self.content.split('\n')
+#            self.L = len(self.contentlist) - 1  # number of lines in the csv file
+#            self.textEdit_results.setText("Logging - read " + str(self.L - 1) + " lines from " + self.zip_file)
 
         except Exception as e:
             #  Go back to front page to display error box
