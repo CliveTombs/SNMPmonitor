@@ -110,13 +110,8 @@ class MyApp(QMainWindow, Ui_MainWindow):
             outfile = self.line_enter_filename.displayText()
             infile = "unitdetails.csv"
             zipPass = self.line_ZipPassword.displayText()
-            if os.name == "posix":  # Detect Linux OS
-                subprocess.call(["zip", "-P", zipPass, outfile, infile])
-            else:
-                # subprocess.call([, zipPass, outfile, infile])
-                #  subprocess.call(["7z.exe", "a", "-tzip", "-p" + zipPass, outfile, infile])
-                with py7zr.SevenZipFile(outfile, 'w', filters=my_filter, password=zipPass) as archive:
-                    archive.writeall(infile)
+            with py7zr.SevenZipFile(outfile, 'w', filters=my_filter, password=zipPass) as archive:
+                archive.writeall(infile)
         except Exception as e:
             #  Go back to front page to display error box
             self.tabWidget.setCurrentIndex(0)
@@ -230,7 +225,11 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 for fname,  bio in archive.read("unitdetails.csv").items():
                     content = (bio.read().decode())
                 self.contentlist = content.split('\n')
+                contentlist = self.contentlist
                 self.L = len(self.contentlist)  # number of lines in the csv file
+                L = self.L
+                if self.contentlist[self.L - 1] == "":  # If the last line is a blank.(L counts from 1 not 0 but counting lines in file starts at 0)
+                    self.L = self.L -1
                 self.textEdit_results.setText("Logging - read " + str(self.L - 1) + " lines from " + self.zip_file)
 #            archive.close()
 #        try:
