@@ -231,14 +231,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 if self.contentlist[self.L - 1] == "":  # If the last line is a blank.(L counts from 1 not 0 but counting lines in file starts at 0)
                     self.L = self.L -1
                 self.textEdit_results.setText("Logging - read " + str(self.L - 1) + " lines from " + self.zip_file)
-#            archive.close()
-#        try:
-#            with ZipFile(self.zip_file) as z:
-#                self.content = z.read("unitdetails.csv", pwd=self.line_pw.text().encode()).decode()
-#                z.close()
-#            self.contentlist = self.content.split('\n')
-#            self.L = len(self.contentlist) - 1  # number of lines in the csv file
-#            self.textEdit_results.setText("Logging - read " + str(self.L - 1) + " lines from " + self.zip_file)
+
 
         except Exception as e:
             #  Go back to front page to display error box
