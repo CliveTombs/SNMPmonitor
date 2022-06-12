@@ -5,3 +5,9 @@ v0.2 - releady for use
 v0.3 - added progress numbers to output screen
 v0.4 - added skipping other OIDs for a unit where the first one fails.
 v0.4.1 - fixed where if there was a comma in the returned value it messed up the csv by changing the chatracter to a `
+v0.4.2 - enhancement to zip file selection.
+v1.0.1 - Graphical release using QT5
+v1.0.2 - Windows compatibility. 1. Not zipping files, 2.Not creating a blank csv file
+         1.zip module changed for py7zr for greater flexability of zip methods and compatability with win and lin.
+         2. routine was missing. could never have worked.
+v1.0.3 - Add sounds to indicate a failure

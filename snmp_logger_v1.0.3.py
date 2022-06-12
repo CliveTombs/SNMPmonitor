@@ -31,7 +31,7 @@ v1.0.1 - Graphical release using QT5
 v1.0.2 - Windows compatibility. 1. Not zipping files, 2.Not creating a blank csv file
          1.zip module changed for py7zr for greater flexability of zip methods and compatability with win and lin.
          2. routine was missing. could never have worked.
-v1.0.3 - Add sounds to indicate a failure 
+v1.0.3 - Add sounds to indicate a failure
 
 """
 from mainui import Ui_MainWindow  # uncomment when the .ui is converted to a .py
@@ -504,16 +504,17 @@ class MyApp(QMainWindow, Ui_MainWindow):
             self.label_selection.setText("Error: " + str(e))
 
     def thread_makesound(self):
-        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-            print("In a bundle")
-            bundle_dir = Path(sys._MEIPASS)
-        else:
-            bundle_dir = Path(__file__).parent
-            print("Not in a bundle")
-        path_to_dat = Path.cwd() / bundle_dir
-        print(path_to_dat)
-        song = AudioSegment.from_wav(path_to_dat / "tube.wav")
-        play(song)
+        try:
+            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                bundle_dir = Path(sys._MEIPASS)
+            else:
+                bundle_dir = Path(__file__).parent
+            path_to_dat = Path.cwd() / bundle_dir
+            song = AudioSegment.from_wav(path_to_dat / "tube.wav")
+            play(song)
+        except:
+            pass  # dont worry about it
+
 
 
 if __name__ == "__main__":
