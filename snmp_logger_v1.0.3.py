@@ -504,7 +504,6 @@ class MyApp(QMainWindow, Ui_MainWindow):
             self.label_selection.setText("Error: " + str(e))
 
     def thread_makesound(self):
-<<<<<<< HEAD
         if self.checkBox_sound.isChecked() is True:
             try:
                 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
@@ -521,20 +520,6 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 pass  # dont worry.
         else:
             pass
-=======
-        try:
-            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-                bundle_dir = Path(sys._MEIPASS)
-            else:
-                bundle_dir = Path(__file__).parent
-            path_to_dat = Path.cwd() / bundle_dir
-            song = AudioSegment.from_wav(path_to_dat / "tube.wav")
-            play(song)
-        except:
-            pass  # dont worry about it
-
->>>>>>> 36cc5e0ebc2e3b5467d5e5090c12a272f82b22a7
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
