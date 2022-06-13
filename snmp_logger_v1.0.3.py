@@ -505,16 +505,19 @@ class MyApp(QMainWindow, Ui_MainWindow):
 
     def thread_makesound(self):
         if self.checkBox_sound.isChecked() is True:
-            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-                print("In a bundle")
-                bundle_dir = Path(sys._MEIPASS)
-            else:
-                bundle_dir = Path(__file__).parent
-                print("Not in a bundle")
-            path_to_dat = Path.cwd() / bundle_dir
-            print(path_to_dat)
-            song = AudioSegment.from_wav(path_to_dat / "error-03.wav")
-            play(song)
+            try:
+                if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                    print("In a bundle")
+                    bundle_dir = Path(sys._MEIPASS)
+                else:
+                    bundle_dir = Path(__file__).parent
+                    print("Not in a bundle")
+                path_to_dat = Path.cwd() / bundle_dir
+                print(path_to_dat)
+                song = AudioSegment.from_wav(path_to_dat / "error-03.wav")
+                play(song)
+            except:
+                pass  # dont worry.
         else:
             pass
 
