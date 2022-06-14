@@ -31,12 +31,12 @@ v1.0.1 - Graphical release using QT5
 v1.0.2 - Windows compatibility. 1. Not zipping files, 2.Not creating a blank csv file
          1.zip module changed for py7zr for greater flexability of zip methods and compatability with win and lin.
          2. routine was missing. could never have worked.
-v1.0.3 - Add sounds to indicate a failure
+v1.0.3 - Add sounds to indicate a failure and sucsess
 
 """
 from mainui import Ui_MainWindow  # uncomment when the .ui is converted to a .py
 import sys
-import subprocess
+# import subprocess
 import time
 from hnmp import SNMP
 import getpass
@@ -68,6 +68,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
         Ui_MainWindow.__init__(self)
         self.setupUi(self)
         self.running = True
+        self. checkBox_sound.setChecked(True)
         self.tabWidget.setCurrentIndex(0)
         self.textEdit_results.setText("Log")
         self.helpfile()
@@ -117,11 +118,13 @@ class MyApp(QMainWindow, Ui_MainWindow):
             zipPass = self.line_ZipPassword.displayText()
             with py7zr.SevenZipFile(outfile, 'w', filters=my_filter, password=zipPass) as archive:
                 archive.writeall(infile)
+            x = threading.Thread(target=self.thread_makesound, args=("good-chime.wav",), daemon=False)
+            x.start()
         except Exception as e:
             #  Go back to front page to display error box
             self.tabWidget.setCurrentIndex(0)
             self.label_selection.setText("Error: " + str(e))
-            x = threading.Thread(target=self.thread_makesound, daemon=False)
+            x = threading.Thread(target=self.thread_makesound, args=("error-03.wav",), daemon=False)
             x.start()
             return
 
@@ -148,7 +151,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
             self.lineEdit_status.setText("")
             self.tabWidget.setCurrentIndex(0)
             self.label_selection.setText("Error: " + str(e))
-            x = threading.Thread(target=self.thread_makesound, daemon=False)
+            x = threading.Thread(target=self.thread_makesound, args = ("error-03.wav",), daemon=False)
             x.start()
 
     def stop(self):
@@ -182,6 +185,9 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 self.readstructure()
                 if self.success is True:
                     self.createlog()
+                    # print("playing good")
+                    x = threading.Thread(target=self.thread_makesound, args=("good-chime.wav",), daemon=False)
+                    x.start()
                 else:
                     self.textEdit_results.append("The following error occured:\n" + str(self.report))
                     return
@@ -189,7 +195,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
         except Exception as e:
             self.tabWidget.setCurrentIndex(0)
             self.label_selection.setText("Error: " + str(e))
-            x = threading.Thread(target=self.thread_makesound, daemon=False)
+            x = threading.Thread(target=self.thread_makesound, args=("error-03.wav",), daemon=False)
             x.start()
 
     def makecsv(self):
@@ -214,6 +220,8 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 with open(os.path.normpath("unitdetails.csv"), mode='w', encoding='utf8', newline='\r\n') as f:  # create the file
                     f.write(
                         "ID1,ID2,IP,READCOMMUNITY,SNMPVer,No. of OIDS,OIDTEXT1 ,OID1,OIDTEXT2,OID2\nOffice,printer,192.168.1.4,public,1,1,Uptime,.1.3.6.1.2.1.1.3.0")
+                x = threading.Thread(target=self.thread_makesound, args=("good-chime.wav",), daemon=False)
+                x.start()
                 QMessageBox.about(self, "File Written", "A new \"unitdetails.csv\" file was written")
             else:
                 QMessageBox.about(self, "CSV file ", "No new file was written")
@@ -221,6 +229,8 @@ class MyApp(QMainWindow, Ui_MainWindow):
             with open(os.path.normpath("unitdetails.csv"), mode='w', encoding='utf8', newline='\r\n') as f:  # create the file
                 f.write(
                     "ID1,ID2,IP,READCOMMUNITY,SNMPVer,No. of OIDS,OIDTEXT1 ,OID1,OIDTEXT2,OID2\nOffice,printer,192.168.1.4,public,1,1,Uptime,.1.3.6.1.2.1.1.3.0")
+            x = threading.Thread(target=self.thread_makesound, args=("good-chime.wav",), daemon=False)
+            x.start()
             QMessageBox.about(self, "File Written", "A new \"unitdetails.csv\" file was written")
 
     def readUnitList(self):
@@ -247,13 +257,14 @@ class MyApp(QMainWindow, Ui_MainWindow):
                 if self.contentlist[self.L - 1] == "":  # If the last line is a blank.(L counts from 1 not 0 but counting lines in file starts at 0)
                     self.L = self.L -1
                 self.textEdit_results.setText("Logging - read " + str(self.L - 1) + " lines from " + self.zip_file)
-
+                x = threading.Thread(target=self.thread_makesound, args=("good-chime.wav",), daemon=False)
+                x.start()
 
         except Exception as e:
             #  Go back to front page to display error box
             self.tabWidget.setCurrentIndex(0)
             self.label_selection.setText("Error: " + str(e))
-            x = threading.Thread(target=self.thread_makesound, daemon=False)
+            x = threading.Thread(target=self.thread_makesound, args=("error-03.wav",), daemon=False)
             x.start()
             return
 
@@ -297,7 +308,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
         except Exception as e:
             self.success = False
             self.report = e
-            x = threading.Thread(target=self.thread_makesound, daemon=False)
+            x = threading.Thread(target=self.thread_makesound, args=("error-03.wav",), daemon=False)
             x.start()
 
     def delay(self, amount):
@@ -452,7 +463,7 @@ class MyApp(QMainWindow, Ui_MainWindow):
                         self.OIDValue.append("----")
 
                     self.textEdit_results.append("Failed.  " + str(e))
-                    x = threading.Thread(target=self.thread_makesound, daemon=False)
+                    x = threading.Thread(target=self.thread_makesound, args=("error-03.wav",), daemon=False)
                     x.start()
                     return
                 else:
@@ -503,18 +514,18 @@ class MyApp(QMainWindow, Ui_MainWindow):
             self.delaysecs = 1
             self.label_selection.setText("Error: " + str(e))
 
-    def thread_makesound(self):
+    def thread_makesound(self, track):
         if self.checkBox_sound.isChecked() is True:
             try:
                 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-                    print("In a bundle")
+                    # print("In a bundle")
                     bundle_dir = Path(sys._MEIPASS)
                 else:
                     bundle_dir = Path(__file__).parent
-                    print("Not in a bundle")
+                    # print("Not in a bundle")
                 path_to_dat = Path.cwd() / bundle_dir
-                print(path_to_dat)
-                song = AudioSegment.from_wav(path_to_dat / "error-03.wav")
+                # print(path_to_dat)
+                song = AudioSegment.from_wav(path_to_dat / track)
                 play(song)
             except:
                 pass  # dont worry.
